@@ -9,6 +9,18 @@ It's designed to help train and evaluate legal AI systems.
 You can learn more and access the dataset at [the Atticus Project website](https://www.atticusprojectai.org/cuad).
 You need to download the CUAD dataset in this folder if you wish to run the processing pipeline
 
+## Demo database
+
+You can access the demo database that contains the graph using the following credentials:
+
+```
+NEO4J_URI = "neo4j+s://demo.neo4jlabs.com:7687"
+NEO4J_USERNAME = "legalcontracts"
+NEO4J_PASSWORD = "legalcontracts"
+NEO4J_DATABASE = "legalcontracts"
+```
+
+
 ## Overview
 
 This project provides two main workflows:

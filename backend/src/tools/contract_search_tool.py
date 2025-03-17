@@ -4,6 +4,8 @@ from langchain_core.tools import BaseTool
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_neo4j import Neo4jGraph
 from pydantic import BaseModel, Field
+from enum import Enum
+
 
 from .utils import convert_neo4j_date
 
@@ -32,6 +34,14 @@ CONTRACT_TYPES = [
 graph: Neo4jGraph = Neo4jGraph(refresh_schema=False)
 embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
+class NumberOperator(str, Enum):
+    EQUALS = "EQUALS"
+    GREATER_THAN = "GREATER_THAN"
+    LESS_THAN = "LESS_THAN"
+
+class MonetaryValue(BaseModel):
+    value: float
+    operator: NumberOperator
 
 def get_contracts(
     embeddings: Any,
@@ -45,10 +55,16 @@ def get_contracts(
     summary_search: Optional[str] = None,
     active: Optional[bool] = None,
     cypher_aggregation: Optional[str] = None,
+    total_amount: Optional[MonetaryValue] = None,
 ):
     params: dict[str, Any] = {}
     filters: list[str] = []
     cypher_statement = "MATCH (c:Contract) "
+
+    # Total amount
+    if total_amount:
+        filters.append(f"c.total_amount {total_amount.operator} $total_value")
+        params["total_value"] = total_amount.value
 
     # Effective date range
     if min_effective_date:
@@ -108,7 +124,7 @@ def get_contracts(
     if cypher_aggregation:
         cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
-          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active """
+          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id """
         cypher_statement += cypher_aggregation
     else:
         # Final RETURN
@@ -117,12 +133,11 @@ def get_contracts(
             total_count_of_contracts: size(nodes),
             example_values: [
               el in nodes[..5] |
-              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date}
+              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, contract_id: el.file_id}
             ]
         } AS output"""
     output = graph.query(cypher_statement, params)
     return [convert_neo4j_date(el) for el in output]
-
 
 class ContractInput(BaseModel):
     min_effective_date: Optional[str] = Field(
@@ -150,6 +165,9 @@ class ContractInput(BaseModel):
         None, description="Country where the contract applies"
     )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
+    monetary_value: Optional[MonetaryValue] = Field(
+        None, description="Total monetary value of the contract"
+    )
     cypher_aggregation: Optional[str] = Field(
         None,
         description="""Custom Cypher statement for advanced aggregations and analytics.
@@ -158,7 +176,7 @@ class ContractInput(BaseModel):
         ```
         MATCH (c:Contract)
         <filtering based on other parameters>
-        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active
+        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active, monetary_value, contract_id
         <your cypher goes here>
         ```
         

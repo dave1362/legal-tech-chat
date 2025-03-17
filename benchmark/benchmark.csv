@@ -1,13 +1,8 @@
-Question;Answer
-What are some contracts that ended after 1990-01-01?;"There are a total of 377 contracts that ended after January 1, 1990
-"
-What are some contracts that ended after 1990-01-01 that fall under strategic alliance?;"There are 48 contracts classified as ""Strategic Alliance"" that ended after January 1, 1990.
-"
-What are some contracts with HC2 Holdings, Inc.?;"There is one contract involving HC2 Holdings, Inc. This contract is a ""Cooperation Agreement"" under the type ""Strategic Alliance."" It was effective from May 13, 2020, and ended on January 1, 2021. The contract's scope involved an agreement to modify the composition of the company's board of directors and related matters.
-"
-Which year was the most contracts signed?;"The year with the most contracts signed was 2020, with a total of 50 contracts.
-"
-Which company has the most active contracts?;"The company with the most active contracts is HOF Village, LLC, with a total of 2 active contracts.
-"
+question;ground_truth
+What are some contracts that ended after 1990-01-01?;There are a total of 377 contracts that ended after January 1, 1990
+What are some contracts that ended after 1990-01-01 that fall under strategic alliance?;"There are 48 contracts classified as ""Strategic Alliance"" that ended after January 1, 1990."
+What are some contracts with HC2 Holdings, Inc.?;"There is one contract involving HC2 Holdings, Inc. This contract is a ""Cooperation Agreement"" under the type ""Strategic Alliance."" It was effective from May 13, 2020, and ended on January 1, 2021. The contract's scope involved an agreement to modify the composition of the company's board of directors and related matters."
+Which year was the most contracts signed?;The year with the most contracts signed was 2020, with a total of 50 contracts.
+Which company has the most active contracts?;The company with the most active contracts is HOF Village, LLC, with a total of 2 active contracts.
 Do we have any contracts about indemnification?;"There are currently no contracts in our system that specifically mention ""indemnification"" in their summaries. If you have any more specific criteria or need assistance with something else, feel free to ask!
 "

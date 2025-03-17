@@ -1,0 +1,229 @@
+from typing import Any, List, Optional, Type
+
+from langchain_core.tools import BaseTool
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_neo4j import Neo4jGraph
+from pydantic import BaseModel, Field
+
+from .utils import convert_neo4j_date
+
+CONTRACT_TYPES = [
+    "Affiliate Agreement" "Development",
+    "Distributor",
+    "Endorsement",
+    "Franchise",
+    "Hosting",
+    "IP",
+    "Joint Venture",
+    "License Agreement",
+    "Maintenance",
+    "Manufacturing",
+    "Marketing",
+    "Non Compete/Solicit" "Outsourcing",
+    "Promotion",
+    "Reseller",
+    "Service",
+    "Sponsorship",
+    "Strategic Alliance",
+    "Supply",
+    "Transportation",
+]
+
+graph: Neo4jGraph = Neo4jGraph(refresh_schema=False)
+embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+
+
+def get_contracts(
+    embeddings: Any,
+    min_effective_date: Optional[str] = None,
+    max_effective_date: Optional[str] = None,
+    min_end_date: Optional[str] = None,
+    max_end_date: Optional[str] = None,
+    contract_type: Optional[str] = None,
+    country: Optional[str] = None,
+    parties: Optional[List[str]] = None,
+    summary_search: Optional[str] = None,
+    active: Optional[bool] = None,
+    cypher_aggregation: Optional[str] = None,
+):
+    params: dict[str, Any] = {}
+    filters: list[str] = []
+    cypher_statement = "MATCH (c:Contract) "
+
+    # Effective date range
+    if min_effective_date:
+        filters.append("c.effective_date >= date($min_effective_date)")
+        params["min_effective_date"] = min_effective_date
+    if max_effective_date:
+        filters.append("c.effective_date <= date($max_effective_date)")
+        params["max_effective_date"] = max_effective_date
+
+    # End date range
+    if min_end_date:
+        filters.append("c.end_date >= date($min_end_date)")
+        params["min_end_date"] = min_end_date
+    if max_end_date:
+        filters.append("c.end_date <= date($max_end_date)")
+        params["max_end_date"] = max_end_date
+
+    # Contract type
+    if contract_type:
+        filters.append("c.contract_type IN $contract_type")
+        params["contract_type"] = contract_type.split(",")
+    # Country
+    if country:
+        filters.append("c.country = $country")
+        params["country"] = country
+
+    # Parties (relationship-based filter)
+    if parties:
+        parties_filter = []
+        for i, party in enumerate(parties):
+            party_param_name = f"party_{i}"
+            parties_filter.append(
+                f"""EXISTS {{
+                MATCH (c)<-[:PARTY_TO]-(party)
+                WHERE toLower(party.name) CONTAINS ${party_param_name}
+            }}"""
+            )
+            params[party_param_name] = party.lower()
+
+        if parties_filter:
+            filters.append(" AND ".join(parties_filter))
+    if active is not None:
+        operator = ">=" if active else "<"
+        filters.append(f"c.end_date {operator} date()")
+    if filters:
+        cypher_statement += f"WHERE {' AND '.join(filters)} "
+    # If summary we use vector similarity
+    if summary_search:
+        cypher_statement += (
+            "WITH c, vector.similarity.cosine(c.embedding, $embedding) "
+            "AS score ORDER BY score DESC WITH c, score WHERE score > 0.9 "
+        )  # Define a threshold limit
+        params["embedding"] = embeddings.embed_query(summary_search)
+    else:  # Else we sort by latest
+        cypher_statement += "WITH c ORDER BY c.effective_date DESC "
+
+    if cypher_aggregation:
+        cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
+          c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
+          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active """
+        cypher_statement += cypher_aggregation
+    else:
+        # Final RETURN
+        cypher_statement += """WITH collect(c) AS nodes
+        RETURN {
+            total_count_of_contracts: size(nodes),
+            example_values: [
+              el in nodes[..5] |
+              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date}
+            ]
+        } AS output"""
+    output = graph.query(cypher_statement, params)
+    return [convert_neo4j_date(el) for el in output]
+
+
+class ContractInput(BaseModel):
+    min_effective_date: Optional[str] = Field(
+        None, description="Earliest contract effective date (YYYY-MM-DD)"
+    )
+    max_effective_date: Optional[str] = Field(
+        None, description="Latest contract effective date (YYYY-MM-DD)"
+    )
+    min_end_date: Optional[str] = Field(
+        None, description="Earliest contract end date (YYYY-MM-DD)"
+    )
+    max_end_date: Optional[str] = Field(
+        None, description="Latest contract end date (YYYY-MM-DD)"
+    )
+    contract_type: Optional[str] = Field(
+        None, description=f"Contract type; valid types: {CONTRACT_TYPES}"
+    )
+    parties: Optional[List[str]] = Field(
+        None, description="List of parties involved in the contract"
+    )
+    summary_search: Optional[str] = Field(
+        None, description="Inspect summary of the contract"
+    )
+    country: Optional[str] = Field(
+        None, description="Country where the contract applies"
+    )
+    active: Optional[bool] = Field(None, description="Whether the contract is active")
+    cypher_aggregation: Optional[str] = Field(
+        None,
+        description="""Custom Cypher statement for advanced aggregations and analytics.
+    
+        This will be appended to the base query:
+        ```
+        MATCH (c:Contract)
+        <filtering based on other parameters>
+        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active
+        <your cypher goes here>
+        ```
+        
+        Examples:
+        
+        1. Count contracts by type:
+        ```
+        RETURN contract_type, count(*) AS count ORDER BY count DESC
+        ```
+        
+        2. Calculate average contract duration by type:
+        ```
+        WITH contract_type, duration.between(effective_date, end_date).days AS duration
+        RETURN contract_type, avg(duration) AS avg_duration ORDER BY avg_duration DESC
+        ```
+        
+        3. Calculate contracts per effective date year:
+        ```
+        RETURN effective_date.year AS year, count(*) AS count ORDER BY year
+        ```
+        
+        4. Counts the party with the highest number of active contracts:
+        ```
+        UNWIND parties AS party
+        WITH party, active, count(*) AS contract_count
+        WHERE active = true
+        RETURN party_name, contract_count
+        ORDER BY contract_count DESC
+        LIMIT 1
+        ```
+        """,
+    )
+
+
+class ContractSearchTool(BaseTool):
+    name: str = "ContractSearch"
+    description: str = (
+        "useful for when you need to answer questions related to any contracts"
+    )
+    args_schema: Type[BaseModel] = ContractInput
+
+    def _run(
+        self,
+        min_effective_date: Optional[str] = None,
+        max_effective_date: Optional[str] = None,
+        min_end_date: Optional[str] = None,
+        max_end_date: Optional[str] = None,
+        contract_type: Optional[str] = None,
+        country: Optional[str] = None,
+        parties: Optional[List[str]] = None,
+        summary_search: Optional[str] = None,
+        active: Optional[bool] = None,
+        cypher_aggregation: Optional[str] = None,
+    ) -> str:
+        """Use the tool."""
+        return get_contracts(
+            embedding,
+            min_effective_date,
+            max_effective_date,
+            min_end_date,
+            max_end_date,
+            contract_type,
+            country,
+            parties,
+            summary_search,
+            active,
+            cypher_aggregation,
+        )

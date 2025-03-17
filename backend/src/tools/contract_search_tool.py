@@ -35,9 +35,9 @@ graph: Neo4jGraph = Neo4jGraph(refresh_schema=False)
 embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
 class NumberOperator(str, Enum):
-    EQUALS = "EQUALS"
-    GREATER_THAN = "GREATER_THAN"
-    LESS_THAN = "LESS_THAN"
+    EQUALS = "="
+    GREATER_THAN = ">"
+    LESS_THAN = "<"
 
 class MonetaryValue(BaseModel):
     value: float
@@ -55,16 +55,16 @@ def get_contracts(
     summary_search: Optional[str] = None,
     active: Optional[bool] = None,
     cypher_aggregation: Optional[str] = None,
-    total_amount: Optional[MonetaryValue] = None,
+    monetary_value: Optional[MonetaryValue] = None,
 ):
     params: dict[str, Any] = {}
     filters: list[str] = []
     cypher_statement = "MATCH (c:Contract) "
 
     # Total amount
-    if total_amount:
-        filters.append(f"c.total_amount {total_amount.operator} $total_value")
-        params["total_value"] = total_amount.value
+    if monetary_value:
+        filters.append(f"c.total_amount {monetary_value.operator.value} $total_value")
+        params["total_value"] = monetary_value.value
 
     # Effective date range
     if min_effective_date:
@@ -229,6 +229,7 @@ class ContractSearchTool(BaseTool):
         parties: Optional[List[str]] = None,
         summary_search: Optional[str] = None,
         active: Optional[bool] = None,
+        monetary_value: Optional[MonetaryValue] = None,
         cypher_aggregation: Optional[str] = None,
     ) -> str:
         """Use the tool."""
@@ -244,4 +245,5 @@ class ContractSearchTool(BaseTool):
             summary_search,
             active,
             cypher_aggregation,
+            monetary_value
         )

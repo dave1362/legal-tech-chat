@@ -1,10 +1,16 @@
 import { Button } from "@/components/ui/button"
+import { Chat } from "./components/chat"
+
+import "./App.css"
+import { ThemeProvider } from "./components/theme-provider"
 
 function App() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh">
-      <Button>Click me</Button>
-    </div>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <div className="mx-auto h-full max-w-2xl p-4">
+        <Chat />
+      </div>
+    </ThemeProvider>
   )
 }
 

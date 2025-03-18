@@ -141,7 +141,7 @@ def get_contracts(
               el in nodes[..5] |
               {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, 
                file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, 
-               contract_id: el.file_id, parties: [(c)<-[:PARTY_TO]-(party) | party.name], 
+               contract_id: el.file_id, parties: [(el)<-[:PARTY_TO]-(party) | party.name], 
                countries: apoc.coll.toSet([(el)<-[:PARTY_TO]-()-[:LOCATED_IN]->(country) | country.name])}
             ]
         } AS output"""

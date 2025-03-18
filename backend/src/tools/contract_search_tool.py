@@ -31,7 +31,7 @@ CONTRACT_TYPES = [
     "Transportation",
 ]
 
-graph: Neo4jGraph = Neo4jGraph(refresh_schema=False)
+graph: Neo4jGraph = Neo4jGraph(refresh_schema=False, driver_config={"notifications_min_severity": "OFF"})
 embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
 class NumberOperator(str, Enum):

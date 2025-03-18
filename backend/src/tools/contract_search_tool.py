@@ -88,8 +88,13 @@ def get_contracts(
         params["contract_type"] = contract_type.split(",")
     # Country
     if country:
-        filters.append("c.country = $country")
-        params["country"] = country
+        filters.append(
+                """EXISTS {
+                MATCH (c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country)
+                WHERE toLower(country.name) = $country
+            }"""
+            )
+        params["country"] = country.lower()
 
     # Parties (relationship-based filter)
     if parties:
@@ -124,7 +129,8 @@ def get_contracts(
     if cypher_aggregation:
         cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
-          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id """
+          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
+          apoc.coll.toSet([(c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country) | country.name]) AS countries """
         cypher_statement += cypher_aggregation
     else:
         # Final RETURN
@@ -133,7 +139,10 @@ def get_contracts(
             total_count_of_contracts: size(nodes),
             example_values: [
               el in nodes[..5] |
-              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, contract_id: el.file_id}
+              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, 
+               file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, 
+               contract_id: el.file_id, parties: [(c)<-[:PARTY_TO]-(party) | party.name], 
+               countries: apoc.coll.toSet([(el)<-[:PARTY_TO]-()-[:LOCATED_IN]->(country) | country.name])}
             ]
         } AS output"""
     output = graph.query(cypher_statement, params)
@@ -162,7 +171,7 @@ class ContractInput(BaseModel):
         None, description="Inspect summary of the contract"
     )
     country: Optional[str] = Field(
-        None, description="Country where the contract applies"
+        None, description="Country where the contract applies. Use the two-letter ISO standard."
     )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
     monetary_value: Optional[MonetaryValue] = Field(
@@ -176,7 +185,7 @@ class ContractInput(BaseModel):
         ```
         MATCH (c:Contract)
         <filtering based on other parameters>
-        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active, monetary_value, contract_id
+        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active, monetary_value, contract_id, countries
         <your cypher goes here>
         ```
         

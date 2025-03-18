@@ -40,6 +40,7 @@ class NumberOperator(str, Enum):
     LESS_THAN = "<"
 
 class MonetaryValue(BaseModel):
+    """The total amount or value of a contract"""
     value: float
     operator: NumberOperator
 
@@ -129,7 +130,7 @@ def get_contracts(
     if cypher_aggregation:
         cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
-          [(c)<-[:PARTY_TO]-(party) | party.name] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
+          [(c)<-[r:PARTY_TO]-(party) | {party: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
           apoc.coll.toSet([(c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country) | country.name]) AS countries """
         cypher_statement += cypher_aggregation
     else:
@@ -141,7 +142,7 @@ def get_contracts(
               el in nodes[..5] |
               {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, 
                file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, 
-               contract_id: el.file_id, parties: [(el)<-[:PARTY_TO]-(party) | party.name], 
+               contract_id: el.file_id, parties: [(el)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}], 
                countries: apoc.coll.toSet([(el)<-[:PARTY_TO]-()-[:LOCATED_IN]->(country) | country.name])}
             ]
         } AS output"""
@@ -175,7 +176,7 @@ class ContractInput(BaseModel):
     )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
     monetary_value: Optional[MonetaryValue] = Field(
-        None, description="Total monetary value of the contract"
+        None, description="The total amount or value of a contract"
     )
     cypher_aggregation: Optional[str] = Field(
         None,
@@ -198,6 +199,8 @@ class ContractInput(BaseModel):
         
         2. Calculate average contract duration by type:
         ```
+        WITH contract_type, effective_date, end_date
+        WHERE effective_date IS NOT NULL AND end_date IS NOT NULL
         WITH contract_type, duration.between(effective_date, end_date).days AS duration
         RETURN contract_type, avg(duration) AS avg_duration ORDER BY avg_duration DESC
         ```
@@ -210,7 +213,7 @@ class ContractInput(BaseModel):
         4. Counts the party with the highest number of active contracts:
         ```
         UNWIND parties AS party
-        WITH party, active, count(*) AS contract_count
+        WITH party.name AS party_name, active, count(*) AS contract_count
         WHERE active = true
         RETURN party_name, contract_count
         ORDER BY contract_count DESC

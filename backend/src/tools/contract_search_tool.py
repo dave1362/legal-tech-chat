@@ -130,7 +130,7 @@ def get_contracts(
     if cypher_aggregation:
         cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
-          [(c)<-[r:PARTY_TO]-(party) | {party: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
+          [(c)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
           apoc.coll.toSet([(c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country) | country.name]) AS countries """
         cypher_statement += cypher_aggregation
     else:

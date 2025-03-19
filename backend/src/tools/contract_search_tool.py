@@ -219,6 +219,11 @@ class ContractInput(BaseModel):
         ORDER BY contract_count DESC
         LIMIT 1
         ```
+        5. Which Hosting contracts have the highest total value?
+        ```
+        WITH * WHERE monetary_value IS NOT NULL
+        RETURN monetary_value, contract_id ORDER BY monetary_value DESC LIMIT 1
+        ```
         """,
     )
 

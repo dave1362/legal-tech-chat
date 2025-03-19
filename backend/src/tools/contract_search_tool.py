@@ -85,8 +85,8 @@ def get_contracts(
 
     # Contract type
     if contract_type:
-        filters.append("c.contract_type IN $contract_type")
-        params["contract_type"] = contract_type.split(",")
+        filters.append("c.contract_type = $contract_type")
+        params["contract_type"] = contract_type
     # Country
     if country:
         filters.append(

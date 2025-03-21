@@ -85,8 +85,8 @@ def get_contracts(
 
     # Contract type
     if contract_type:
-        filters.append("c.contract_type IN $contract_type")
-        params["contract_type"] = contract_type.split(",")
+        filters.append("c.contract_type = $contract_type")
+        params["contract_type"] = contract_type
     # Country
     if country:
         filters.append(
@@ -130,7 +130,7 @@ def get_contracts(
     if cypher_aggregation:
         cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
-          [(c)<-[r:PARTY_TO]-(party) | {party: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
+          [(c)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
           apoc.coll.toSet([(c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country) | country.name]) AS countries """
         cypher_statement += cypher_aggregation
     else:
@@ -218,6 +218,11 @@ class ContractInput(BaseModel):
         RETURN party_name, contract_count
         ORDER BY contract_count DESC
         LIMIT 1
+        ```
+        5. Which contracts have the highest total value?
+        ```
+        WITH * WHERE monetary_value IS NOT NULL
+        RETURN monetary_value, contract_id ORDER BY monetary_value DESC LIMIT 1
         ```
         """,
     )

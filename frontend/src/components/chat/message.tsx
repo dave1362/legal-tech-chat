@@ -1,14 +1,23 @@
-import { Card } from "../ui/card";
+import { Loader } from "../ui/loader";
+
+
 
 interface Props {
     type: "user" | "ai";
+    text: string;
+    generating?: boolean;
 }
 
-export function ChatMessage({ type }: Props) {
+export function ChatMessage({ type, text, generating }: Props) {
     return (
-        <Card className={`mt-3 p-3 gap-0 ${type === "ai" ? "opacity-100" : "opacity-60"}`}>
+        <div className={`py-3 gap-0 ${type === "ai" ? "opacity-100" : "opacity-60"}`}>
             <strong className="text-xs">{type === "ai" ? "AI" : "USER"}</strong>
-            <div>Quit touching me</div>
-        </Card>
+            <div>
+                {text}
+                {generating && (
+                    <Loader />
+                )}
+            </div>
+        </div>
     );
 }

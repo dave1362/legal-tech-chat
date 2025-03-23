@@ -15,16 +15,22 @@ export function ChatOutput() {
     return (
         <div className="flex-1 relative">
             <div className="absolute top-0 left-0 right-0 bottom-0 overflow-y-auto pr-3 inset-shadow-md">
-                <div>
-                    {messages.map((message) => {
-                        return (
-                            <ChatMessage
-                                key={message.id}
-                                message={message}
-                            />
-                        )
-                    })}
-                </div>
+                {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text-muted">Chat is hooked to Neo4j contracts demo database.</p>
+                    </div>
+                ) : (
+                    <div>
+                        {messages.map((message) => {
+                            return (
+                                <ChatMessage
+                                    key={message.id}
+                                    message={message}
+                                />
+                            )
+                        })}
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>
         </div>

@@ -1,4 +1,5 @@
-import { Textarea } from "@/components/ui/textarea"
+import React, { KeyboardEvent } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -6,7 +7,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import { Button } from "../ui/button";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MouseEvent } from 'react';
@@ -14,6 +15,7 @@ import { SendHorizontal } from "lucide-react";
 import { Message, useChat } from "./provider";
 
 export function ChatInput() {
+    const [submiting, setSubmiting] = React.useState(false);
     const { addMessage, updateMessageText, updateMessageGenerating, updateToolMessage, reset } = useChat();
 
     const handleSubmit = async (event: any) => {
@@ -37,7 +39,7 @@ export function ChatInput() {
         };
 
         addMessage(userMessage);
-        addMessage(aiMessage)
+        addMessage(aiMessage);
 
         await fetchEventSource('http://localhost:8000/run/', {
             method: 'POST',
@@ -56,7 +58,14 @@ export function ChatInput() {
                     updateMessageText(aiMessage.id, data.text);
                 }
             },
+            async onopen() {
+                setSubmiting(true);
+            },
+            onclose() {
+                setSubmiting(false);
+            },
             onerror(err) {
+                setSubmiting(false);
                 console.error('Error:', err);
                 updateMessageText(aiMessage.id, "Error: Failed to generate the response.");
                 updateMessageGenerating(aiMessage.id, false);
@@ -68,12 +77,27 @@ export function ChatInput() {
     const handleClear = (event: MouseEvent) => {
         event.preventDefault();
         reset();
-    }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            const form = event.currentTarget.form;
+            if (form) {
+                form.requestSubmit();
+            }
+        }
+    };
 
     return (
         <div className="flex-0">
             <form className="flex flex-col gap-2 relative" onSubmit={handleSubmit}>
-                <Textarea name="prompt" className="m-0 max-h-[400px]" placeholder="Type your prompt here!" />
+                <Textarea
+                    name="prompt"
+                    className="m-0 max-h-[400px]"
+                    placeholder="Type your prompt here!"
+                    onKeyDown={handleKeyDown}
+                />
                 <div className="flex gap-2">
                     <Select name="model" defaultValue="gemini">
                         <SelectTrigger className=" flex-1 text-foreground">
@@ -88,7 +112,7 @@ export function ChatInput() {
                     <Button variant="outline" className="flex-0" onClick={handleClear}>
                         Reset
                     </Button>
-                    <Button className="flex-0" type="submit">
+                    <Button className="flex-0" type="submit" disabled={submiting}>
                         Send your prompt now!
                         <SendHorizontal />
                     </Button>

@@ -1,4 +1,4 @@
-import React, { KeyboardEvent } from "react";
+import React, { KeyboardEvent, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
@@ -17,12 +17,17 @@ import { Message, useChat } from "./provider";
 export function ChatInput() {
     const [submiting, setSubmiting] = React.useState(false);
     const { addMessage, updateMessageText, updateMessageGenerating, updateToolMessage, reset } = useChat();
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSubmit = async (event: any) => {
         event.preventDefault();
         const formData = new FormData(event.target);
         const model = formData.get("model") as string;
         const prompt = formData.get("prompt") as string;
+
+        if (!prompt.trim()) {
+            return;
+        }
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -77,6 +82,9 @@ export function ChatInput() {
     const handleClear = (event: MouseEvent) => {
         event.preventDefault();
         reset();
+        if (textareaRef.current) {
+            textareaRef.current.value = "";
+        }
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -97,6 +105,7 @@ export function ChatInput() {
                     className="m-0 max-h-[400px]"
                     placeholder="Type your prompt here!"
                     onKeyDown={handleKeyDown}
+                    ref={textareaRef}
                 />
                 <div className="flex gap-2">
                     <Select name="model" defaultValue="gemini">

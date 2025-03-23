@@ -1,10 +1,13 @@
 from typing import Any, List, Optional, Type
 
+from dotenv import load_dotenv
 from langchain_core.tools import BaseTool
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_neo4j import Neo4jGraph
 from pydantic import BaseModel, Field
 from enum import Enum
+
+load_dotenv()
 
 
 from .utils import convert_neo4j_date
@@ -128,7 +131,7 @@ def get_contracts(
         cypher_statement += "WITH c ORDER BY c.effective_date DESC "
 
     if cypher_aggregation:
-        cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type, 
+        cypher_statement += """WITH c, c.summary AS summary, c.contract_type AS contract_type,
           c.contract_scope AS contract_scope, c.effective_date AS effective_date, c.end_date AS end_date,
           [(c)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}] AS parties, c.end_date >= date() AS active, c.total_amount as monetary_value, c.file_id AS contract_id,
           apoc.coll.toSet([(c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country) | country.name]) AS countries """
@@ -140,9 +143,9 @@ def get_contracts(
             total_count_of_contracts: size(nodes),
             example_values: [
               el in nodes[..5] |
-              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope, 
-               file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount, 
-               contract_id: el.file_id, parties: [(el)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}], 
+              {summary:el.summary, contract_type:el.contract_type, contract_scope: el.contract_scope,
+               file_id: el.file_id, effective_date: el.effective_date, end_date: el.end_date,monetary_value: el.total_amount,
+               contract_id: el.file_id, parties: [(el)<-[r:PARTY_TO]-(party) | {name: party.name, role: r.role}],
                countries: apoc.coll.toSet([(el)<-[:PARTY_TO]-()-[:LOCATED_IN]->(country) | country.name])}
             ]
         } AS output"""
@@ -181,7 +184,7 @@ class ContractInput(BaseModel):
     cypher_aggregation: Optional[str] = Field(
         None,
         description="""Custom Cypher statement for advanced aggregations and analytics.
-    
+
         This will be appended to the base query:
         ```
         MATCH (c:Contract)
@@ -189,14 +192,14 @@ class ContractInput(BaseModel):
         WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active, monetary_value, contract_id, countries
         <your cypher goes here>
         ```
-        
+
         Examples:
-        
+
         1. Count contracts by type:
         ```
         RETURN contract_type, count(*) AS count ORDER BY count DESC
         ```
-        
+
         2. Calculate average contract duration by type:
         ```
         WITH contract_type, effective_date, end_date
@@ -204,12 +207,12 @@ class ContractInput(BaseModel):
         WITH contract_type, duration.between(effective_date, end_date).days AS duration
         RETURN contract_type, avg(duration) AS avg_duration ORDER BY avg_duration DESC
         ```
-        
+
         3. Calculate contracts per effective date year:
         ```
         RETURN effective_date.year AS year, count(*) AS count ORDER BY year
         ```
-        
+
         4. Counts the party with the highest number of active contracts:
         ```
         UNWIND parties AS party

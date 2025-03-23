@@ -9,11 +9,12 @@ import {
 } from "@/components/ui/select"
 import { Button } from "../ui/button";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { MouseEvent } from 'react';
 import { SendHorizontal } from "lucide-react";
 import { Message, useChat } from "./provider";
 
 export function ChatInput() {
-    const { addMessage, updateMessageText, updateMessageGenerating } = useChat();
+    const { addMessage, updateMessageText, updateMessageGenerating, updateToolMessage, reset } = useChat();
 
     const handleSubmit = async (event: any) => {
         event.preventDefault();
@@ -46,8 +47,11 @@ export function ChatInput() {
             body: JSON.stringify({ model, prompt }),
             onmessage(event) {
                 const data = JSON.parse(event.data);
+
                 if (data.type === "end") {
                     updateMessageGenerating(aiMessage.id, false);
+                } else if (data.type === "tool_message") {
+                    updateToolMessage(aiMessage.id, data.text);
                 } else {
                     updateMessageText(aiMessage.id, data.text);
                 }
@@ -60,6 +64,12 @@ export function ChatInput() {
             }
         });
     };
+
+    const handleClear = (event: MouseEvent) => {
+        event.preventDefault();
+        reset();
+    }
+
     return (
         <div className="flex-0">
             <form className="flex flex-col gap-2 relative" onSubmit={handleSubmit}>
@@ -75,12 +85,15 @@ export function ChatInput() {
                             </SelectGroup>
                         </SelectContent>
                     </Select>
+                    <Button variant="outline" className="flex-0" onClick={handleClear}>
+                        Reset
+                    </Button>
                     <Button className="flex-0" type="submit">
                         Send your prompt now!
                         <SendHorizontal />
                     </Button>
                 </div>
-            </form >
-        </div >
+            </form>
+        </div>
     );
 }

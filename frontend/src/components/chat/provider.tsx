@@ -4,6 +4,7 @@ export type Message = {
     id: string;
     type: "user" | "ai";
     text: string;
+    tool_message?: string;
     generating: boolean;
 };
 
@@ -16,13 +17,17 @@ type ChatProviderState = {
     addMessage: (message: Message) => void;
     updateMessageText: (id: string, text: string) => void;
     updateMessageGenerating: (id: string, generating: boolean) => void;
+    updateToolMessage: (id: string, tool_message: string) => void;
+    reset: () => void;
 };
 
 const initialState: ChatProviderState = {
     messages: [],
     addMessage: () => null,
     updateMessageText: () => null,
-    updateMessageGenerating: () => null
+    updateMessageGenerating: () => null,
+    updateToolMessage: () => null,
+    reset: () => null
 };
 
 const ChatProviderContext = createContext<ChatProviderState>(initialState);
@@ -50,11 +55,25 @@ export function ChatProvider({ children }: ChatProviderProps) {
         );
     }, []);
 
+    const updateToolMessage = useCallback((id: string, tool_message: string) => {
+        setMessages((prevMessages) =>
+            prevMessages.map((message) =>
+                message.id === id ? { ...message, tool_message } : message
+            )
+        );
+    }, []);
+
+    const reset = () => {
+        setMessages([]);
+    };
+
     const value = {
         messages,
         addMessage,
         updateMessageText,
-        updateMessageGenerating
+        updateMessageGenerating,
+        updateToolMessage,
+        reset
     };
 
     return (

@@ -1,16 +1,20 @@
 import json
 import asyncio
-from typing import Type
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from langchain_core.messages import HumanMessage, ToolMessage, AIMessageChunk
+
+from backend.agent import get_agent
+
 load_dotenv()
 
 app = FastAPI()
+agent = get_agent()
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,23 +33,20 @@ class RunPayload(BaseModel):
     model: str
     prompt: str
 
-async def fake_llm_stream():
-    messages = [
-        {"text": "my ", "type": "text"},
-        {"text": "name ", "type": "text"},
-        {"text": "is ", "type": "text"},
-        {"text": "best ", "type": "text"},
-        {"text": "ai ", "type": "text"},
-        {"text": "on ", "type": "text"},
-        {"text": "the ", "type": "text"},
-        {"text": "world.", "type": "text"},
-    ]
-    for message in messages:
-        yield f"data: {json.dumps(message)}\n\n"
-        await asyncio.sleep(0.1)
+async def runner(model, prompt):
+    input_messages = [HumanMessage(content=prompt)]
+    messages = agent.astream(input={"messages": input_messages}, stream_mode="messages")
+
+    async for chunk in messages:
+        print(chunk)
+        if isinstance(chunk[0], ToolMessage):
+            yield f"data: {json.dumps({'text': chunk[0].content, 'type': 'tool_message'})}\n\n"
+        else:
+            yield f"data: {json.dumps({'text': chunk[0].content, 'type': 'text'})}\n\n"
+        await asyncio.sleep(0.12)
 
     yield f"data: {json.dumps({'text': '', 'type': 'end'})}\n\n"
 
 @app.post("/run/")
 async def run(payload: RunPayload):
-    return StreamingResponse(fake_llm_stream(), media_type="text/event-stream")
+    return StreamingResponse(runner(model=payload.model, prompt=payload.prompt), media_type="text/event-stream")

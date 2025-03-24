@@ -94,8 +94,8 @@ def get_contracts(
     if country:
         filters.append(
                 """EXISTS {
-                MATCH (c)<-[:PARTY_TO]-(party)-[:LOCATED_IN]->(country)
-                WHERE toLower(country.name) = $country
+                MATCH (c)<-[:PARTY_TO]-(party)-[:HAS_LOCATION]->(country)
+                WHERE toLower(country.country) = $country
             }"""
             )
         params["country"] = country.lower()

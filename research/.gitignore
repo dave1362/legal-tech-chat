@@ -4,7 +4,6 @@ import-graph/full_contract_txt
 __pycache__/
 *.py[cod]
 *$py.class
-*.json
 
 # C extensions
 *.so

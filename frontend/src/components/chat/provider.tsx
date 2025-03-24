@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
+export type MessagePartType = "user_message" | "ai_message" | "tool_call" | "tool_message" | "end";
+
+export type MessagePart = {
+    type: MessagePartType;
+    content: string;
+};
+
 export type Message = {
     id: string;
     type: "user" | "ai";
-    text: string;
-    tool_message?: string;
+    parts: Array<MessagePart>;
     generating: boolean;
 };
 
@@ -15,18 +21,16 @@ type ChatProviderProps = {
 type ChatProviderState = {
     messages: Message[];
     addMessage: (message: Message) => void;
-    updateMessageText: (id: string, text: string) => void;
+    addMessagePart: (id: string, part: MessagePart) => void;
     updateMessageGenerating: (id: string, generating: boolean) => void;
-    updateToolMessage: (id: string, tool_message: string) => void;
     reset: () => void;
 };
 
 const initialState: ChatProviderState = {
     messages: [],
     addMessage: () => null,
-    updateMessageText: () => null,
+    addMessagePart: () => null,
     updateMessageGenerating: () => null,
-    updateToolMessage: () => null,
     reset: () => null
 };
 
@@ -39,26 +43,22 @@ export function ChatProvider({ children }: ChatProviderProps) {
         setMessages((prevMessages) => [...prevMessages, message]);
     }, []);
 
-    const updateMessageText = useCallback((id: string, text: string) => {
+    const addMessagePart = useCallback((messageId: string, part: MessagePart) => {
         setMessages((prevMessages) =>
-            prevMessages.map((message) =>
-                message.id === id ? { ...message, text: message.text + text } : message
-            )
+            prevMessages.map((message) => {
+                if (message.id === messageId) {
+                    return { ...message, parts: [...message.parts, part] };
+                }
+                return message;
+            })
         );
     }, []);
+
 
     const updateMessageGenerating = useCallback((id: string, generating: boolean) => {
         setMessages((prevMessages) =>
             prevMessages.map((message) =>
                 message.id === id ? { ...message, generating } : message
-            )
-        );
-    }, []);
-
-    const updateToolMessage = useCallback((id: string, tool_message: string) => {
-        setMessages((prevMessages) =>
-            prevMessages.map((message) =>
-                message.id === id ? { ...message, tool_message } : message
             )
         );
     }, []);
@@ -70,9 +70,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
     const value = {
         messages,
         addMessage,
-        updateMessageText,
+        addMessagePart,
         updateMessageGenerating,
-        updateToolMessage,
         reset
     };
 

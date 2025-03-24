@@ -38,14 +38,20 @@ async def runner(model, prompt):
     messages = agent.astream(input={"messages": input_messages}, stream_mode="messages")
 
     async for chunk in messages:
-        print(chunk)
-        if isinstance(chunk[0], ToolMessage):
-            yield f"data: {json.dumps({'text': chunk[0].content, 'type': 'tool_message'})}\n\n"
-        else:
-            yield f"data: {json.dumps({'text': chunk[0].content, 'type': 'text'})}\n\n"
-        await asyncio.sleep(0.12)
+        # output tool call section type
+        if hasattr(chunk[0], 'tool_calls') and len(chunk[0].tool_calls) > 0:
+            tool_calls_content = json.dumps(chunk[0].tool_calls)
+            yield f"data: {json.dumps({'content': tool_calls_content, 'type': 'tool_call'})}\n\n"
 
-    yield f"data: {json.dumps({'text': '', 'type': 'end'})}\n\n"
+        if isinstance(chunk[0], ToolMessage):
+            yield f"data: {json.dumps({'content': chunk[0].content, 'type': 'tool_message'})}\n\n"
+        if isinstance(chunk[0], AIMessageChunk):
+            yield f"data: {json.dumps({'content': chunk[0].content, 'type': 'ai_message'})}\n\n"
+        if isinstance(chunk[0], HumanMessage):
+            yield f"data: {json.dumps({'content': chunk[0].content, 'type': 'user_message'})}\n\n"
+        # await asyncio.sleep(0.12)
+
+    yield f"data: {json.dumps({'content': '', 'type': 'end'})}\n\n"
 
 @app.post("/run/")
 async def run(payload: RunPayload):

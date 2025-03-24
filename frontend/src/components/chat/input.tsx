@@ -12,11 +12,11 @@ import { Button } from "../ui/button";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MouseEvent } from 'react';
 import { SendHorizontal } from "lucide-react";
-import { Message, useChat } from "./provider";
+import { Message, MessagePart, useChat } from "./provider";
 
 export function ChatInput() {
     const [submiting, setSubmiting] = React.useState(false);
-    const { addMessage, updateMessageText, updateMessageGenerating, updateToolMessage, reset } = useChat();
+    const { addMessage, addMessagePart, updateMessageGenerating, reset } = useChat();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSubmit = async (event: any) => {
@@ -32,14 +32,14 @@ export function ChatInput() {
         const userMessage: Message = {
             id: Date.now().toString(),
             type: "user",
-            text: prompt,
+            parts: [{ content: prompt, type: "user_message" }],
             generating: false
         };
 
         const aiMessage: Message = {
             id: Date.now().toString() + "ai",
             type: "ai",
-            text: "",
+            parts: [],
             generating: true
         };
 
@@ -53,14 +53,12 @@ export function ChatInput() {
             },
             body: JSON.stringify({ model, prompt }),
             onmessage(event) {
-                const data = JSON.parse(event.data);
+                const data: MessagePart = JSON.parse(event.data);
 
                 if (data.type === "end") {
                     updateMessageGenerating(aiMessage.id, false);
-                } else if (data.type === "tool_message") {
-                    updateToolMessage(aiMessage.id, data.text);
                 } else {
-                    updateMessageText(aiMessage.id, data.text);
+                    addMessagePart(aiMessage.id, data);
                 }
             },
             async onopen() {
@@ -72,7 +70,7 @@ export function ChatInput() {
             onerror(err) {
                 setSubmiting(false);
                 console.error('Error:', err);
-                updateMessageText(aiMessage.id, "Error: Failed to generate the response.");
+                addMessagePart(aiMessage.id, { type: "ai_message", content: "Error: Failed to generate the response." });
                 updateMessageGenerating(aiMessage.id, false);
                 throw new Error('Connection closed due to error');
             }

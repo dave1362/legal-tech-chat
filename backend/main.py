@@ -8,13 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessageChunk
+from backend.agent_manager import AgentManager
 
-from backend.agent import get_agent
 
 load_dotenv()
 
+agent_manager = AgentManager()
+
 app = FastAPI()
-agent = get_agent()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +25,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
+
 
 @app.get("/")
 async def root():
@@ -33,13 +36,16 @@ class RunPayload(BaseModel):
     model: str
     prompt: str
 
+
 async def runner(model, prompt):
     input_messages = [HumanMessage(content=prompt)]
-    messages = agent.astream(input={"messages": input_messages}, stream_mode="messages")
+    messages = agent_manager.get_model_by_name(model).astream(
+        input={"messages": input_messages}, stream_mode="messages"
+    )
 
     async for chunk in messages:
         # output tool call section type
-        if hasattr(chunk[0], 'tool_calls') and len(chunk[0].tool_calls) > 0:
+        if hasattr(chunk[0], "tool_calls") and len(chunk[0].tool_calls) > 0:
             tool_calls_content = json.dumps(chunk[0].tool_calls)
             yield f"data: {json.dumps({'content': tool_calls_content, 'type': 'tool_call'})}\n\n"
 
@@ -53,6 +59,10 @@ async def runner(model, prompt):
 
     yield f"data: {json.dumps({'content': '', 'type': 'end'})}\n\n"
 
+
 @app.post("/run/")
 async def run(payload: RunPayload):
-    return StreamingResponse(runner(model=payload.model, prompt=payload.prompt), media_type="text/event-stream")
+    return StreamingResponse(
+        runner(model=payload.model, prompt=payload.prompt),
+        media_type="text/event-stream",
+    )

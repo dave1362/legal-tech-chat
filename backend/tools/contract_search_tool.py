@@ -34,18 +34,24 @@ CONTRACT_TYPES = [
     "Transportation",
 ]
 
-graph: Neo4jGraph = Neo4jGraph(refresh_schema=False, driver_config={"notifications_min_severity": "OFF"})
+graph: Neo4jGraph = Neo4jGraph(
+    refresh_schema=False, driver_config={"notifications_min_severity": "OFF"}
+)
 embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+
 
 class NumberOperator(str, Enum):
     EQUALS = "="
     GREATER_THAN = ">"
     LESS_THAN = "<"
 
+
 class MonetaryValue(BaseModel):
     """The total amount or value of a contract"""
+
     value: float
     operator: NumberOperator
+
 
 def get_contracts(
     embeddings: Any,
@@ -93,11 +99,11 @@ def get_contracts(
     # Country
     if country:
         filters.append(
-                """EXISTS {
+            """EXISTS {
                 MATCH (c)<-[:PARTY_TO]-(party)-[:HAS_LOCATION]->(country)
                 WHERE toLower(country.country) = $country
             }"""
-            )
+        )
         params["country"] = country.lower()
 
     # Parties (relationship-based filter)
@@ -152,6 +158,7 @@ def get_contracts(
     output = graph.query(cypher_statement, params)
     return [convert_neo4j_date(el) for el in output]
 
+
 class ContractInput(BaseModel):
     min_effective_date: Optional[str] = Field(
         None, description="Earliest contract effective date (YYYY-MM-DD)"
@@ -175,7 +182,8 @@ class ContractInput(BaseModel):
         None, description="Inspect summary of the contract"
     )
     country: Optional[str] = Field(
-        None, description="Country where the contract applies. Use the two-letter ISO standard."
+        None,
+        description="Country where the contract applies. Use the two-letter ISO standard.",
     )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
     monetary_value: Optional[MonetaryValue] = Field(
@@ -265,5 +273,5 @@ class ContractSearchTool(BaseTool):
             summary_search,
             active,
             cypher_aggregation,
-            monetary_value
+            monetary_value,
         )

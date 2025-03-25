@@ -106,13 +106,15 @@ export function ChatInput() {
                     ref={textareaRef}
                 />
                 <div className="flex gap-2">
-                    <Select name="model" defaultValue="gemini">
+                    <Select name="model" defaultValue="gemini-2.0-flash">
                         <SelectTrigger className=" flex-1 text-foreground">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
-                                <SelectItem value="gemini">gemini</SelectItem>
+                                <SelectItem value="gemini-1.5-pro">gemini-1.5-pro</SelectItem>
+                                <SelectItem value="gemini-2.0-flash">gemini-2.0-flash</SelectItem>
+                                <SelectItem value="gpt-4o">gpt-4o</SelectItem>
                             </SelectGroup>
                         </SelectContent>
                     </Select>

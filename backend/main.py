@@ -46,8 +46,10 @@ async def runner(model, prompt):
     async for chunk in messages:
         # output tool call section type
         if hasattr(chunk[0], "tool_calls") and len(chunk[0].tool_calls) > 0:
-            tool_calls_content = json.dumps(chunk[0].tool_calls)
-            yield f"data: {json.dumps({'content': tool_calls_content, 'type': 'tool_call'})}\n\n"
+            for tool in chunk[0].tool_calls:
+                if tool.get('name'):
+                    tool_calls_content = json.dumps(tool)
+                    yield f"data: {json.dumps({'content': tool_calls_content, 'type': 'tool_call'})}\n\n"
 
         if isinstance(chunk[0], ToolMessage):
             yield f"data: {json.dumps({'content': chunk[0].content, 'type': 'tool_message'})}\n\n"

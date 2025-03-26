@@ -65,6 +65,7 @@ async def runner(model: str, prompt: str, history: str):
 
     prompt_message = HumanMessage(content=prompt)
     input_messages = [*previous_messages, prompt_message]
+    print(">>", input_messages)
     messages = agent_manager.get_model_by_name(model).astream(
         input={"messages": input_messages}, stream_mode=["messages", "updates"]
     )
@@ -99,8 +100,8 @@ async def runner(model: str, prompt: str, history: str):
             if "assistant" in message[1]:
                 for history_message in message[1]["assistant"]["messages"]:
                     context.append(history_message.model_dump_json())
-            elif "tool" in message[1]:
-                for tool_message in message[1]["tool"]["messages"]:
+            elif "tools" in message[1]:
+                for tool_message in message[1]["tools"]["messages"]:
                     context.append(tool_message.model_dump_json())
 
     yield f"data: {json.dumps({'content': context, 'type': 'history'})}\n\n"

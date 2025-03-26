@@ -65,7 +65,6 @@ async def runner(model: str, prompt: str, history: str):
 
     prompt_message = HumanMessage(content=prompt)
     input_messages = [*previous_messages, prompt_message]
-    print(">>", input_messages)
     messages = agent_manager.get_model_by_name(model).astream(
         input={"messages": input_messages}, stream_mode=["messages", "updates"]
     )

@@ -15,6 +15,7 @@ import { SendHorizontal } from "lucide-react";
 import { Message, MessagePart, useChat } from "./provider";
 
 export function ChatInput() {
+    const history = useRef<string[]>([])
     const [submiting, setSubmiting] = React.useState(false);
     const { addMessage, addMessagePart, updateMessageGenerating, reset } = useChat();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -45,18 +46,20 @@ export function ChatInput() {
 
         addMessage(userMessage);
         addMessage(aiMessage);
-
+        console.log({ model, prompt, history: history.current });
         await fetchEventSource('http://localhost:8000/run/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ model, prompt }),
+            body: JSON.stringify({ model, prompt, history: JSON.stringify(history.current) }),
             onmessage(event) {
                 const data: MessagePart = JSON.parse(event.data);
 
                 if (data.type === "end") {
                     updateMessageGenerating(aiMessage.id, false);
+                } else if (data.type === "history") {
+                    history.current = [...history.current, ...data.content]
                 } else {
                     addMessagePart(aiMessage.id, data);
                 }
@@ -80,6 +83,7 @@ export function ChatInput() {
     const handleClear = (event: MouseEvent) => {
         event.preventDefault();
         reset();
+        history.current = [];
         if (textareaRef.current) {
             textareaRef.current.value = "";
         }

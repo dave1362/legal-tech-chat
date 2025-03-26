@@ -49,7 +49,7 @@ class AgentManager:
             )
         print(f"Loaded {len(self.agents)} llms.")
 
-    def get_model_by_name(self, name):
+    def get_model_by_name(self, name: str):
         try:
             return self.agents[name]
         except KeyError:

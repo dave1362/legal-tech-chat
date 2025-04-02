@@ -3,6 +3,8 @@
 This repository processes the Contract Understanding Atticus Dataset (CUAD) using LangChain to extract structured data from legal contracts and build a comprehensive knowledge graph.
 The system includes a LangGraph-powered agent for intelligent querying and analysis of contract information.
 
+![](https://cdn-images-1.medium.com/max/800/1*R57-KUW9zvXhx5VucKEMLA.png)
+
 ## 📄 About CUAD
 
 The [Contract Understanding Atticus Dataset (CUAD)](https://www.atticusprojectai.org/cuad) consists of 500 contracts with annotations for 41 legal clauses. This dataset provides a rich source of legal text for information extraction and analysis.

@@ -12,3 +12,15 @@ The [Contract Understanding Atticus Dataset (CUAD)](https://www.atticusprojectai
 - **Contract Processing**: Extract structured data from 500 CUAD contracts using LangChain
 - **Knowledge Graph Construction**: Build a comprehensive graph database of contract relationships and clauses
 - **Intelligent Query System**: Utilize LangGraph agents to query and analyze the contract database
+
+## 🛠️ Setup and Installation
+
+1. Clone the repository
+2. Copy the environment file:
+   ```
+   copy .env.example to .env
+   ```
+3. Start the application:
+   ```
+   docker-compose up
+   ```

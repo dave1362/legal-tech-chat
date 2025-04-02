@@ -80,6 +80,7 @@ async def runner(model: str, prompt: str, history: str):
     async for message in messages:
         if message[0] == "messages":
             chunk = message[1]
+
             # output tool call section type
             if hasattr(chunk[0], "tool_calls") and len(chunk[0].tool_calls) > 0:
                 for tool in chunk[0].tool_calls:

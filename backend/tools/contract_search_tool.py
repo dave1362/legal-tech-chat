@@ -52,6 +52,12 @@ class MonetaryValue(BaseModel):
     value: float
     operator: NumberOperator
 
+class Location(BaseModel):
+    """Specified location"""
+
+    country: Optional[str] = Field(None, description="Use two-letter ISO standard")
+    state: Optional[str]
+
 
 def get_contracts(
     embeddings: Any,
@@ -60,16 +66,26 @@ def get_contracts(
     min_end_date: Optional[str] = None,
     max_end_date: Optional[str] = None,
     contract_type: Optional[str] = None,
-    country: Optional[str] = None,
     parties: Optional[List[str]] = None,
     summary_search: Optional[str] = None,
     active: Optional[bool] = None,
     cypher_aggregation: Optional[str] = None,
     monetary_value: Optional[MonetaryValue] = None,
-):
+    governing_law: Optional[Location] = None
+):  
     params: dict[str, Any] = {}
     filters: list[str] = []
     cypher_statement = "MATCH (c:Contract) "
+
+    if governing_law:
+        if governing_law.country:
+            filters.append(
+            """EXISTS {
+                MATCH (c)-[:HAS_GOVERNING_LAW]->(country)
+                WHERE toLower(country.country) = $governing_law_country
+            }"""
+            )
+            params["governing_law_country"] = governing_law.country.lower()
 
     # Total amount
     if monetary_value:
@@ -96,15 +112,6 @@ def get_contracts(
     if contract_type:
         filters.append("c.contract_type = $contract_type")
         params["contract_type"] = contract_type
-    # Country
-    if country:
-        filters.append(
-            """EXISTS {
-                MATCH (c)<-[:PARTY_TO]-(party)-[:HAS_LOCATION]->(country)
-                WHERE toLower(country.country) = $country
-            }"""
-        )
-        params["country"] = country.lower()
 
     # Parties (relationship-based filter)
     if parties:
@@ -181,11 +188,8 @@ class ContractInput(BaseModel):
     summary_search: Optional[str] = Field(
         None, description="Inspect summary of the contract"
     )
-    country: Optional[str] = Field(
-        None,
-        description="Country where the contract applies. Use the two-letter ISO standard.",
-    )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
+    governing_law: Optional[Location] = Field(None, description="Governing law of the contract")
     monetary_value: Optional[MonetaryValue] = Field(
         None, description="The total amount or value of a contract"
     )
@@ -253,12 +257,12 @@ class ContractSearchTool(BaseTool):
         min_end_date: Optional[str] = None,
         max_end_date: Optional[str] = None,
         contract_type: Optional[str] = None,
-        country: Optional[str] = None,
         parties: Optional[List[str]] = None,
         summary_search: Optional[str] = None,
         active: Optional[bool] = None,
         monetary_value: Optional[MonetaryValue] = None,
         cypher_aggregation: Optional[str] = None,
+        governing_law: Optional[Location] = None
     ) -> str:
         """Use the tool."""
         return get_contracts(
@@ -268,10 +272,10 @@ class ContractSearchTool(BaseTool):
             min_end_date,
             max_end_date,
             contract_type,
-            country,
             parties,
             summary_search,
             active,
             cypher_aggregation,
             monetary_value,
+            governing_law
         )

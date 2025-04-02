@@ -1,4 +1,4 @@
-# legal-tech-chat
+# Agentic GraphRAG on commercial contracts
 
 This repository processes the Contract Understanding Atticus Dataset (CUAD) using LangChain to extract structured data from legal contracts and build a comprehensive knowledge graph.
 The system includes a LangGraph-powered agent for intelligent querying and analysis of contract information.
